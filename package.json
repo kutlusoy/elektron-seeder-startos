@@ -10,7 +10,7 @@
     "clean": "rm -rf node_modules dist *.s9pk"
   },
   "dependencies": {
-    "@start9labs/start-sdk": "^0.3.6",
+    "@start9labs/start-sdk": "^1.5.3",
     "yaml": "^2.4.5"
   },
   "devDependencies": {
