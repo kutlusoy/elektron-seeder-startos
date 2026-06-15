@@ -7,7 +7,7 @@ S9PK    := $(PKG_ID).s9pk
 all: $(S9PK)
 
 $(S9PK): node_modules
-	npx start-cli build
+	start-cli s9pk pack -o $@
 
 node_modules: package.json
 	npm install
