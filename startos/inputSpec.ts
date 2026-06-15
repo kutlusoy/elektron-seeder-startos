@@ -197,4 +197,4 @@ export const inputSpec = sdk.InputSpec.of({
   }),
 })
 
-export type InputSpec = typeof inputSpec.validator._TYPE
+export type InputSpec = (typeof inputSpec)['_TYPE']

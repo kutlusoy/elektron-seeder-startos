@@ -12,31 +12,42 @@ export const showStats = sdk.Action.withoutInput(
     visibility: 'enabled',
   }),
   async ({ effects }) => {
-    const out = await sdk.runCommand(effects, {
-      imageId: 'main',
-      command: [
-        'sh',
-        '-c',
-        'test -f /data/seeder/dnsseed.dump && head -n 50 /data/seeder/dnsseed.dump || echo "No dnsseed.dump yet. Give the crawler some time to build its database."',
-      ],
-      mounts: [
-        {
-          type: 'volume',
-          id: 'main',
-          subpath: null,
-          mountpoint: '/data',
-          readonly: true,
-        },
-      ],
+    const mounts = sdk.Mounts.of().mountVolume({
+      volumeId: 'main',
+      subpath: null,
+      mountpoint: '/data',
+      readonly: true,
     })
 
+    const out = await SubContainerHelper(effects, mounts)
+
     return {
-      version: '1',
+      version: '1' as const,
       title: 'Crawler Stats',
-      message: (out.stdout?.toString() || 'no output').slice(0, 65000),
-      value: null,
-      copyable: false,
-      qr: false,
+      message: out.slice(0, 65000),
+      result: null,
     }
   },
 )
+
+async function SubContainerHelper(
+  effects: Parameters<typeof sdk.SubContainer.of>[0],
+  mounts: ReturnType<typeof sdk.Mounts.of>,
+): Promise<string> {
+  const container = await sdk.SubContainer.of(
+    effects,
+    { imageId: 'main' },
+    mounts,
+    'show-stats',
+  )
+  try {
+    const r = await container.exec([
+      'sh',
+      '-c',
+      'test -f /data/seeder/dnsseed.dump && head -n 50 /data/seeder/dnsseed.dump || echo "No dnsseed.dump yet. Give the crawler some time to build its database."',
+    ])
+    return (r.stdout?.toString() || 'no output')
+  } finally {
+    await container.destroy()
+  }
+}

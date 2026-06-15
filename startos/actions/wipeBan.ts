@@ -1,4 +1,5 @@
 import { sdk } from '../sdk'
+import { oneShotFile } from '../fileModels/oneShot'
 
 export const wipeBanOnce = sdk.Action.withoutInput(
   'wipe-ban-once',
@@ -13,6 +14,11 @@ export const wipeBanOnce = sdk.Action.withoutInput(
     visibility: 'enabled',
   }),
   async ({ effects }) => {
-    await sdk.store.setOwn(effects, sdk.StorePath.oneShot['wipe-ban'], true)
+    const cur = (await oneShotFile.read().const(effects)) ?? {
+      'wipe-ban': false,
+      'wipe-ignore': false,
+      'reset-db': false,
+    }
+    await oneShotFile.write(effects, { ...cur, 'wipe-ban': true })
   },
 )

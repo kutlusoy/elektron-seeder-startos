@@ -1,4 +1,5 @@
 import { sdk } from '../sdk'
+import { oneShotFile } from '../fileModels/oneShot'
 
 export const wipeIgnoreOnce = sdk.Action.withoutInput(
   'wipe-ignore-once',
@@ -12,6 +13,11 @@ export const wipeIgnoreOnce = sdk.Action.withoutInput(
     visibility: 'enabled',
   }),
   async ({ effects }) => {
-    await sdk.store.setOwn(effects, sdk.StorePath.oneShot['wipe-ignore'], true)
+    const cur = (await oneShotFile.read().const(effects)) ?? {
+      'wipe-ban': false,
+      'wipe-ignore': false,
+      'reset-db': false,
+    }
+    await oneShotFile.write(effects, { ...cur, 'wipe-ignore': true })
   },
 )

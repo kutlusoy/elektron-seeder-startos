@@ -1,4 +1,5 @@
 import { sdk } from '../sdk'
+import { oneShotFile } from '../fileModels/oneShot'
 
 export const resetDb = sdk.Action.withoutInput(
   'reset-db',
@@ -13,6 +14,11 @@ export const resetDb = sdk.Action.withoutInput(
     visibility: 'enabled',
   }),
   async ({ effects }) => {
-    await sdk.store.setOwn(effects, sdk.StorePath.oneShot['reset-db'], true)
+    const cur = (await oneShotFile.read().const(effects)) ?? {
+      'wipe-ban': false,
+      'wipe-ignore': false,
+      'reset-db': false,
+    }
+    await oneShotFile.write(effects, { ...cur, 'reset-db': true })
   },
 )

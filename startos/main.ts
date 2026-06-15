@@ -1,10 +1,10 @@
 import { sdk } from './sdk'
-import { setInterfaces } from './interfaces'
-import { healthChecks } from './healthChecks'
+import { configFile } from './fileModels/config'
+import { oneShotFile } from './fileModels/oneShot'
 import * as yaml from 'yaml'
 
-export const main = sdk.setupMain(async ({ effects, started }) => {
-  const cfg = await sdk.store.getOwn(effects, sdk.StorePath.config).const()
+export const main = sdk.setupMain(async ({ effects }) => {
+  const cfg = await configFile.read().const(effects)
   if (!cfg || !cfg.host || !cfg.nameserver) {
     throw new Error(
       'Elektron Seeder is not configured. Open the service Config action and set at least DNS Host and Nameserver before starting.',
@@ -12,7 +12,7 @@ export const main = sdk.setupMain(async ({ effects, started }) => {
   }
 
   // Merge persistent toggles with one-shot toggles (cleared after this run)
-  const oneShot = (await sdk.store.getOwn(effects, sdk.StorePath.oneShot).const()) || {
+  const oneShot = (await oneShotFile.read().const(effects)) ?? {
     'wipe-ban': false,
     'wipe-ignore': false,
     'reset-db': false,
@@ -23,68 +23,63 @@ export const main = sdk.setupMain(async ({ effects, started }) => {
     'wipe-ignore': cfg['wipe-ignore'] || oneShot['wipe-ignore'],
   }
 
-  await setInterfaces(effects)
+  const mounts = sdk.Mounts.of().mountVolume({
+    volumeId: 'main',
+    subpath: null,
+    mountpoint: '/data',
+    readonly: false,
+  })
 
-  return sdk.SubContainer.with(
+  const container = await sdk.SubContainer.of(
     effects,
     { imageId: 'main' },
-    [
-      {
-        type: 'volume',
-        id: 'main',
-        subpath: null,
-        mountpoint: '/data',
-        readonly: false,
-      },
-    ],
+    mounts,
     'main',
-    async (container) => {
-      await container.exec(['mkdir', '-p', '/data/start9', '/data/seeder'])
-
-      if (oneShot['reset-db']) {
-        await container.exec([
-          'sh',
-          '-c',
-          'rm -f /data/seeder/dnsseed.dat /data/seeder/dnsseed.dump',
-        ])
-      }
-
-      await container.exec([
-        'sh',
-        '-c',
-        `cat > /data/start9/config.yaml <<'EOF'\n${yaml.stringify(effective)}\nEOF`,
-      ])
-
-      // Clear one-shot flags so they don't re-trigger on next restart
-      await sdk.store.setOwn(effects, sdk.StorePath.oneShot, {
-        'wipe-ban': false,
-        'wipe-ignore': false,
-        'reset-db': false,
-      })
-
-      return sdk.Daemons.of({
-        effects,
-        started,
-        healthReceipts: [],
-      }).addDaemon('primary', {
-        subcontainer: container,
-        command: ['/usr/local/bin/docker_entrypoint.sh'],
-        mounts: sdk.Mounts.of().mountVolume({
-          volumeId: 'main',
-          subpath: null,
-          mountpoint: '/data',
-          readonly: false,
-        }),
-        ready: {
-          display: 'dnsseed',
-          fn: () =>
-            healthChecks.process.fn({ effects } as any).then((r) => ({
-              result: r.result === 'success' ? 'success' : 'failure',
-              message: r.message,
-            })),
-        },
-        requires: [],
-      })
-    },
   )
+
+  await container.exec(['mkdir', '-p', '/data/start9', '/data/seeder'])
+
+  if (oneShot['reset-db']) {
+    await container.exec([
+      'sh',
+      '-c',
+      'rm -f /data/seeder/dnsseed.dat /data/seeder/dnsseed.dump',
+    ])
+  }
+
+  await container.exec([
+    'sh',
+    '-c',
+    `cat > /data/start9/config.yaml <<'EOF'\n${yaml.stringify(effective)}\nEOF`,
+  ])
+
+  // Clear one-shot flags so they don't re-trigger on next restart
+  await oneShotFile.write(effects, {
+    'wipe-ban': false,
+    'wipe-ignore': false,
+    'reset-db': false,
+  })
+
+  return sdk.Daemons.of(effects).addDaemon('primary', {
+    subcontainer: container,
+    exec: { command: ['/usr/local/bin/docker_entrypoint.sh'] },
+    ready: {
+      display: 'dnsseed',
+      fn: () =>
+        container
+          .exec(['pgrep', '-x', 'dnsseed'])
+          .then((r) =>
+            r.exitCode === 0
+              ? {
+                  result: 'success' as const,
+                  message: 'dnsseed process is running',
+                }
+              : {
+                  result: 'failure' as const,
+                  message: 'dnsseed process is not running',
+                },
+          ),
+    },
+    requires: [],
+  })
 })

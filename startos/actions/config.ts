@@ -1,9 +1,10 @@
 import { sdk } from '../sdk'
 import { inputSpec } from '../inputSpec'
+import { configFile } from '../fileModels/config'
 
 export const setConfig = sdk.Action.withInput(
   'config',
-  async ({ effects }) => ({
+  async ({ effects: _effects }) => ({
     name: 'Configure',
     description: 'Configure the Elektron Seeder.',
     warning: null,
@@ -11,9 +12,9 @@ export const setConfig = sdk.Action.withInput(
     group: null,
     visibility: 'enabled',
   }),
-  async ({ effects }) => inputSpec,
-  async ({ effects }) => sdk.store.getOwn(effects, sdk.StorePath.config).const(),
+  async ({ effects: _effects, prefill: _prefill }) => inputSpec,
+  async ({ effects }) => (await configFile.read().const(effects)) ?? null,
   async ({ effects, input }) => {
-    await sdk.store.setOwn(effects, sdk.StorePath.config, input)
+    await configFile.write(effects, input)
   },
 )
