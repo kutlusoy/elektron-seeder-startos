@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 ARG SEEDER_REPO=https://github.com/kutlusoy/elektron-net-seeder.git
-ARG SEEDER_REF=master
+ARG SEEDER_REF=main
 
 WORKDIR /build
 RUN git clone "$SEEDER_REPO" . \
