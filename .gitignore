@@ -3,3 +3,6 @@ dist/
 *.s9pk
 *.tar.gz
 .DS_Store
+*.swp
+.vscode/
+.idea/

@@ -8,8 +8,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
+ARG SEEDER_REPO=https://github.com/kutlusoy/elektron-net-seeder.git
+ARG SEEDER_REF=master
+
 WORKDIR /build
-RUN git clone --depth 1 https://github.com/kutlusoy/elektron-net-seeder.git . \
+RUN git clone "$SEEDER_REPO" . \
+    && git checkout "$SEEDER_REF" \
     && make
 
 FROM debian:bookworm-slim
@@ -29,7 +33,8 @@ COPY --from=builder /build/dnsseed /usr/local/bin/dnsseed
 RUN setcap 'cap_net_bind_service=+ep' /usr/local/bin/dnsseed
 
 COPY scripts/docker_entrypoint.sh /usr/local/bin/docker_entrypoint.sh
-RUN chmod +x /usr/local/bin/docker_entrypoint.sh
+COPY scripts/health-check.sh    /usr/local/bin/health-check.sh
+RUN chmod +x /usr/local/bin/docker_entrypoint.sh /usr/local/bin/health-check.sh
 
 RUN useradd --system --create-home --home-dir /data --shell /usr/sbin/nologin seeder
 WORKDIR /data

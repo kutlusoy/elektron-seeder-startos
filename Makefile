@@ -2,13 +2,22 @@ VERSION := 0.1.0
 PKG_ID  := elektron-seeder
 S9PK    := $(PKG_ID).s9pk
 
-.PHONY: all build install clean
+.PHONY: all build install clean lint docker-build
 
 all: $(S9PK)
 
-$(S9PK):
-	npm install
+$(S9PK): node_modules
 	npx start-cli build
+
+node_modules: package.json
+	npm install
+	@touch node_modules
+
+lint: node_modules
+	npx tsc --noEmit
+
+docker-build:
+	docker build -t $(PKG_ID):$(VERSION) .
 
 install: $(S9PK)
 	@if ! command -v start-cli >/dev/null 2>&1; then \

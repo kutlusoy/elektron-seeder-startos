@@ -8,9 +8,9 @@ export const sdk = StartSdk.of()
       nameserver: string
       mbox: string | null
       'dns-port': number
+      'bind-ip': string
       threads: number
       'dns-threads': number
-      'bind-ip': string
       testnet: boolean
       'p2p-port': number | null
       magic: string | null
@@ -22,6 +22,11 @@ export const sdk = StartSdk.of()
       'service-filter': string[]
       'wipe-ban': boolean
       'wipe-ignore': boolean
+    }
+    oneShot: {
+      'wipe-ban': boolean
+      'wipe-ignore': boolean
+      'reset-db': boolean
     }
   }>()
   .build(true)

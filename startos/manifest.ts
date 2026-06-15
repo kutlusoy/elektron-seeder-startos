@@ -33,9 +33,11 @@ export const manifest = sdk.Manifest.of({
   },
   hardwareRequirements: {},
   alerts: {
-    install: 'Elektron Seeder needs an authoritative NS record pointing to your StartOS public IP before it can serve DNS queries. See the instructions page for details.',
+    install:
+      'Elektron Seeder needs an authoritative NS record pointing to your StartOS public IP before it can serve DNS queries. See the instructions page for details.',
     update: null,
-    uninstall: null,
+    uninstall:
+      'Uninstalling will permanently remove the crawler database (dnsseed.dat) and the ban / ignore lists. Take a backup first if you want to preserve them.',
     restore: null,
     start: null,
     stop: null,

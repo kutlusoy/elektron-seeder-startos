@@ -40,6 +40,8 @@ vps.example.com.    86400  IN  A   <your StartOS public IP>
 
 ## Build
 
+Locally:
+
 ```
 make
 ```
@@ -49,6 +51,17 @@ Produces `elektron-seeder.s9pk`. Install with:
 ```
 start-cli package install elektron-seeder.s9pk
 ```
+
+### CI build via GitHub Actions
+
+The `.github/workflows/build.yml` workflow runs on every push, pull request, tag, and on manual `workflow_dispatch`. Each run:
+
+1. Sets up QEMU + Docker Buildx (multi-arch x86_64 / aarch64)
+2. Installs `start-cli`
+3. Runs `make` to produce `elektron-seeder.s9pk`
+4. Uploads the artifact for download
+
+Pushing a `v*` tag (e.g. `git tag v0.1.0 && git push --tags`) additionally publishes the `.s9pk` to a GitHub Release.
 
 ## License
 

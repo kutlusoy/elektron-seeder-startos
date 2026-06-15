@@ -5,7 +5,9 @@
   "private": true,
   "scripts": {
     "build": "start-cli build",
-    "install:s9pk": "start-cli package install"
+    "install:s9pk": "start-cli package install",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf node_modules dist *.s9pk"
   },
   "dependencies": {
     "@start9labs/start-sdk": "^0.3.6",
