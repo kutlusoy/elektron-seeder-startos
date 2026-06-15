@@ -28,15 +28,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
 
       - name: Install npm dependencies
         run: npm install
 
       - name: Install start-cli
         run: |
-          curl -fsSL https://github.com/Start9Labs/start-os/releases/latest/download/start-cli-x86_64-unknown-linux-gnu \
+          sudo curl -fsSL https://github.com/Start9Labs/start-os/releases/latest/download/start-cli_x86_64-linux \
             -o /usr/local/bin/start-cli
-          chmod +x /usr/local/bin/start-cli
+          sudo chmod +x /usr/local/bin/start-cli
           start-cli --version
 
       - name: Build s9pk
