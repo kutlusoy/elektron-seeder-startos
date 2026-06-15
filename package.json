@@ -1,0 +1,17 @@
+{
+  "name": "elektron-seeder-startos",
+  "version": "0.1.0",
+  "description": "StartOS service wrapper for the Elektron Net DNS seeder",
+  "private": true,
+  "scripts": {
+    "build": "start-cli build",
+    "install:s9pk": "start-cli package install"
+  },
+  "dependencies": {
+    "@start9labs/start-sdk": "^0.3.6",
+    "yaml": "^2.4.5"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}
