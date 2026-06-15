@@ -6,8 +6,12 @@ S9PK    := $(PKG_ID).s9pk
 
 all: $(S9PK)
 
-$(S9PK): node_modules
+$(S9PK): javascript/index.js
 	start-cli s9pk pack -o $@
+
+javascript/index.js: $(shell find startos -type f) tsconfig.json node_modules
+	npm run check
+	npm run build
 
 node_modules: package.json
 	npm install
@@ -26,4 +30,4 @@ install: $(S9PK)
 	start-cli package install $(S9PK)
 
 clean:
-	rm -rf node_modules dist $(S9PK)
+	rm -rf node_modules javascript $(S9PK)
