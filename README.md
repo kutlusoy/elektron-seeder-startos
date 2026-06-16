@@ -31,7 +31,11 @@ Example using **dynv6.com**:
 2. Create a new zone, e.g. `vps.dynv6.net`. This will be the host that always points to your home IP.
 3. Open **My Account → Keys & Tokens** and copy the **HTTP Token** (long random string).
 
-### Step 2 — Configure DynDNS in the FritzBox
+### Step 2 — Configure DynDNS
+
+You have **two options** for keeping the DynDNS record in sync. Pick **one**.
+
+**Option A — Let the FritzBox do it (recommended if you use a FritzBox):**
 
 FRITZ!Box GUI: **Internet → Permit Access → DynDNS** tab. Enable it and fill in:
 
@@ -50,13 +54,17 @@ For **DuckDNS** use instead:
 - Username: `none`
 - Password: your DuckDNS token
 
-The FritzBox automatically replaces `<domain>`, `<ipaddr>`, `<ip6addr>`, `<pass>` with the right values. Click **Apply** — within seconds the DynDNS hostname resolves to your current public IP.
+**Option B — Let StartOS do it (when the router can't):**
 
-Verify on any device:
+Skip the FritzBox DynDNS tab and use the **built-in DynDNS Updater** in the StartOS Config action — see Step 5 below.
+
+Verify (regardless of option) on any device:
 
 ```
 nslookup vps.dynv6.net
 ```
+
+It should return your current home WAN IP.
 
 ### Step 3 — Open UDP port 53 to your StartOS server
 
@@ -75,16 +83,36 @@ Save. The seeder is now reachable at `vps.dynv6.net:53/udp`.
 
 > Note: Some ISPs (especially CGNAT customers — Vodafone Cable, mobile uplinks) do **not** give you a real public IPv4. Run `curl ifconfig.me` on the FritzBox guest network and compare with the WAN IP shown in the FritzBox overview. If they differ you are behind CGNAT and need either an IPv6-only setup or a small VPS with a public IP as a relay.
 
-### Step 4 — Get a domain and create the NS delegation
+### Step 4 — Create the NS delegation at your domain registrar
 
-At your domain registrar's DNS panel, create two records on `your-domain.tld`:
+In your registrar's DNS panel for `your-domain.tld`, add an `NS` record that delegates the `seed` sub-domain to a host whose A/AAAA records track your home IP.
+
+You have **two equivalent ways** to do this:
+
+**Simple (one record):** Point the NS directly at your DynDNS hostname:
 
 | Type | Name | Value | TTL |
 |---|---|---|---|
-| `CNAME` (or `A` / `AAAA`) | `vps` | `vps.dynv6.net` | 300 |
-| `NS` | `seed` | `vps.your-domain.tld` | 86400 |
+| `NS` | `seed` | `vps.dynv6.net.` | 86400 |
 
-Effect: queries for `seed.your-domain.tld` are delegated to your home FritzBox's WAN IP, which forwards UDP 53 to your seeder.
+Done — no extra A/AAAA records needed at your registrar; dynv6 already provides them for `vps.dynv6.net`.
+
+**Tidy (two records):** Keep the NS name inside your own domain and point a CNAME at dynv6:
+
+| Type | Name | Value | TTL |
+|---|---|---|---|
+| `CNAME` | `vps` | `vps.dynv6.net.` | 300 |
+| `NS` | `seed` | `vps.your-domain.tld.` | 86400 |
+
+Either way, queries for `seed.your-domain.tld` end up at your home FritzBox's WAN IP, which forwards UDP/53 to the seeder.
+
+Which to choose:
+
+- **Simple** is one less record to manage. Some older registrars reject NS targets that point outside your own domain ("in-bailiwick" requirement) — Cloudflare DNS, INWX, Namecheap, Porkbun, deSEC, Hetzner DNS all accept it.
+- **Tidy** keeps everything under your own domain; if you ever switch from dynv6 to another provider you only re-target the CNAME instead of touching the NS delegation.
+- If `your-domain.tld` is DNSSEC-signed, leave the `seed` delegation **unsigned** (no DS record) — dynv6 doesn't sign your sub-zone, so validating resolvers would otherwise reject it.
+
+Set the **Nameserver** field in the StartOS Config to whichever NS target name you used (`vps.dynv6.net` in the simple variant, `vps.your-domain.tld` in the tidy variant).
 
 ### Step 5 — Configure the Elektron Seeder in StartOS
 
@@ -93,13 +121,22 @@ Open the **Elektron Seeder → Config** action and fill in:
 | Config field | Example value | Notes |
 |---|---|---|
 | DNS Host | `seed.your-domain.tld` | The subdomain you delegated via `NS` |
-| Nameserver | `vps.your-domain.tld` | The DynDNS hostname (CNAME target) |
+| Nameserver | `vps.dynv6.net` or `vps.your-domain.tld` | Whichever NS target you used in Step 4 |
 | Contact Email | `you@your-domain.tld` | Goes into the SOA RNAME |
 | DNS Listen Port | `53` | Must match the port sharing rule |
 | Crawler Threads | `24` | Default is fine |
 | DNS Threads | `4` | Default is fine |
 | Testnet Mode | off | Unless crawling testnet |
 | Tor SOCKS5 Proxy | leave empty | Or `127.0.0.1:9050` if Tor is running |
+
+If you chose **Option B** in Step 2 (no FritzBox DynDNS), also expand **DynDNS Updater** and set:
+
+| DynDNS Updater field | Example |
+|---|---|
+| Enable DynDNS updater | on |
+| IPv4 update URL | `https://dynv6.com/api/update?hostname=vps.dynv6.net&token=YOUR_HTTP_TOKEN&ipv4=<ipv4>` |
+| IPv6 update URL | `https://dynv6.com/api/update?hostname=vps.dynv6.net&token=YOUR_HTTP_TOKEN&ipv6=<ipv6>` (optional) |
+| Update interval (minutes) | `5` |
 
 Save and **Start** the service.
 
@@ -124,6 +161,7 @@ You should see A / AAAA answers — these are the peers the crawler has discover
 | `vps.dynv6.net` resolves to a 100.64.x.x or 10.x.x.x address | You are behind CGNAT | Use IPv6 only, or rent a small VPS as a relay |
 | DNS query works from inside LAN but not from internet | Port sharing wrong protocol (TCP vs UDP) | DNS needs **UDP/53** (the FritzBox also lets you add TCP/53 — do both for AXFR resilience) |
 | `dig` shows `REFUSED` | DNS Host in config doesn't match the query name | Make sure the Config "DNS Host" exactly matches the subdomain you delegated |
+| Registrar rejects the NS record | "In-bailiwick" only registrar | Use the **Tidy** variant in Step 4 (CNAME + NS in your own domain) |
 | Seeder returns 0 answers | Crawler hasn't found peers yet | Give it 30–60 min; check the Stats action |
 
 ---
@@ -139,7 +177,7 @@ All settings are exposed via the StartOS **Config** action:
 | Option | Description |
 |---|---|
 | DNS Host | FQDN the seeder will answer queries for (e.g. `seed.elektron-net.org`) |
-| Nameserver | Host of this machine, used as SOA NS (e.g. `vps.elektron-net.org`) |
+| Nameserver | Host of this machine, used as SOA NS (e.g. `vps.elektron-net.org` or your DynDNS hostname directly) |
 | Contact Email | Operator e-mail for SOA RNAME |
 | DNS Listen Port | Port used by the built-in DNS server (default `53`) |
 | Crawler Threads | Parallel P2P crawler threads (default `24`) |
@@ -150,15 +188,27 @@ All settings are exposed via the StartOS **Config** action:
 | Minimum Block Height | Only serve peers at or above this height |
 | Additional Seeds | Extra DNS / .onion bootstrap seeds |
 | Tor SOCKS5 Proxy | `host:port` for dialing `.onion` peers |
+| DynDNS Updater | Optional built-in DynDNS client (separate IPv4 and IPv6 update URLs, configurable interval) |
 
 ### DNS setup
 
-For the seeder to be useful you need an authoritative NS delegation pointing the chosen DNS host to your StartOS machine:
+For the seeder to be useful you need an authoritative NS delegation pointing the chosen DNS host to your StartOS machine. Two equivalent forms:
 
 ```
-seed.example.com.   86400  IN  NS  vps.example.com.
-vps.example.com.    86400  IN  A   <your StartOS public IP>
+; Tidy form — NS target inside your own domain, A/AAAA records resolve to your IP
+seed.example.com.   86400  IN  NS    vps.example.com.
+vps.example.com.    86400  IN  A     203.0.113.10
+vps.example.com.    86400  IN  AAAA  2001:db8::1
 ```
+
+```
+; Simple form — NS target points straight at a third-party DynDNS hostname
+seed.example.com.   86400  IN  NS  vps.dynv6.net.
+```
+
+The tidy form keeps the NS name inside `example.com`, which some legacy registrars require ("in-bailiwick" NS) and decouples the provider switch (you only retarget the A/AAAA or a CNAME). The simple form is one record fewer and works at any modern registrar (Cloudflare, INWX, Namecheap, Porkbun, deSEC, Hetzner). Use the **Nameserver** Config field to match the NS target name you chose.
+
+DNSSEC: if `example.com` is signed, leave the `seed` delegation unsigned (no DS) — DynDNS providers don't sign your sub-zone.
 
 ### Build
 
