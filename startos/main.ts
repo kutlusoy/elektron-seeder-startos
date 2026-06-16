@@ -60,7 +60,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
     'reset-db': false,
   })
 
-  return sdk.Daemons.of(effects).addDaemon('primary', {
+  let daemons = sdk.Daemons.of(effects).addDaemon('primary', {
     subcontainer: container,
     exec: { command: ['/usr/local/bin/docker_entrypoint.sh'] },
     ready: {
@@ -82,4 +82,29 @@ export const main = sdk.setupMain(async ({ effects }) => {
     },
     requires: [],
   })
+
+  // Optional DynDNS updater — runs as a sibling daemon in the same container.
+  // No-op when the user has not enabled it in Config.
+  if (cfg.dyndns?.enabled) {
+    const dyndnsContainer = await sdk.SubContainer.of(
+      effects,
+      { imageId: 'main' },
+      mounts,
+      'dyndns',
+    )
+    daemons = daemons.addDaemon('dyndns', {
+      subcontainer: dyndnsContainer,
+      exec: { command: ['/usr/local/bin/dyndns_updater.sh'] },
+      ready: {
+        display: 'dyndns-updater',
+        fn: () => ({
+          result: 'success' as const,
+          message: 'DynDNS updater loop running',
+        }),
+      },
+      requires: [],
+    })
+  }
+
+  return daemons
 })

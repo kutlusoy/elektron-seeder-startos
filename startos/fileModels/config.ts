@@ -25,6 +25,14 @@ const shape = z
     'service-filter': z.array(z.string()),
     'wipe-ban': z.boolean(),
     'wipe-ignore': z.boolean(),
+    dyndns: z
+      .object({
+        enabled: z.boolean(),
+        'update-url-v4': z.string().nullable(),
+        'update-url-v6': z.string().nullable(),
+        'interval-minutes': z.number(),
+      })
+      .optional(),
   })
   .passthrough()
 

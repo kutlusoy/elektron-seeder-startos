@@ -195,6 +195,51 @@ export const inputSpec = sdk.InputSpec.of({
       'If enabled, clears the list of ignored nodes on the next service start.',
     default: false,
   }),
+
+  // ---- optional DynDNS updater ----
+  dyndns: Value.object(
+    {
+      name: 'DynDNS Updater',
+      description:
+        'Optional built-in DynDNS client. When enabled, the service periodically reports the public IP of this StartOS host to your DynDNS provider via HTTP GET. Leave disabled if your router (e.g. FritzBox) already handles DynDNS.',
+    },
+    sdk.InputSpec.of({
+      enabled: Value.toggle({
+        name: 'Enable DynDNS updater',
+        description:
+          'Start a background loop that updates your DynDNS records on the configured interval.',
+        default: false,
+      }),
+      'update-url-v4': Value.text({
+        name: 'IPv4 update URL',
+        description:
+          'HTTP(S) URL called to update your IPv4 record. Use the placeholder <ipv4> (alias <ipaddr>) where your detected public IPv4 should be inserted. Leave empty to skip v4 updates. Example: https://dynv6.com/api/update?hostname=seed.example.com&token=YOUR_TOKEN&ipv4=<ipv4>',
+        required: false,
+        default: null,
+        placeholder:
+          'https://dynv6.com/api/update?hostname=seed.example.com&token=YOUR_TOKEN&ipv4=<ipv4>',
+      }),
+      'update-url-v6': Value.text({
+        name: 'IPv6 update URL',
+        description:
+          'HTTP(S) URL called to update your IPv6 record. Use the placeholder <ipv6> (alias <ip6addr>) where your detected public IPv6 should be inserted. <ip6lanprefix> is unavailable on StartOS and will be replaced with the empty string. Leave empty to skip v6 updates.',
+        required: false,
+        default: null,
+        placeholder:
+          'https://dynv6.com/api/update?hostname=seed.example.com&token=YOUR_TOKEN&ipv6=<ipv6>',
+      }),
+      'interval-minutes': Value.number({
+        name: 'Update interval (minutes)',
+        description:
+          'How often the updater contacts your DynDNS provider. Minimum 1 minute; default 5 minutes is friendly to free providers.',
+        required: true,
+        default: 5,
+        min: 1,
+        max: 1440,
+        integer: true,
+      }),
+    }),
+  ),
 })
 
 export type InputSpec = (typeof inputSpec)['_TYPE']
