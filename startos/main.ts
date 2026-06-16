@@ -60,7 +60,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
     'reset-db': false,
   })
 
-  let daemons = sdk.Daemons.of(effects).addDaemon('primary', {
+  const primary = sdk.Daemons.of(effects).addDaemon('primary', {
     subcontainer: container,
     exec: { command: ['/usr/local/bin/docker_entrypoint.sh'] },
     ready: {
@@ -92,7 +92,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
       mounts,
       'dyndns',
     )
-    daemons = daemons.addDaemon('dyndns', {
+    return primary.addDaemon('dyndns', {
       subcontainer: dyndnsContainer,
       exec: { command: ['/usr/local/bin/dyndns_updater.sh'] },
       ready: {
@@ -106,5 +106,5 @@ export const main = sdk.setupMain(async ({ effects }) => {
     })
   }
 
-  return daemons
+  return primary
 })
