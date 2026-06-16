@@ -26,6 +26,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libboost-thread1.74.0 \
         libssl3 \
         libcap2-bin \
+        procps \
         tini \
         yq \
     && rm -rf /var/lib/apt/lists/*
