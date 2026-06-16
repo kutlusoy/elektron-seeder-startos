@@ -114,6 +114,30 @@ Which to choose:
 
 Set the **Nameserver** field in the StartOS Config to whichever NS target name you used (`vps.dynv6.net` in the simple variant, `vps.your-domain.tld` in the tidy variant).
 
+#### What if my registrar's DNS panel won't let me create an NS record on a subdomain?
+
+Some registrars (e.g. **World4You**, and a number of other smaller hosters) only let you create `A`, `AAAA`, `CNAME`, `MX`, `TXT`, `SRV` records in their DNS editor — not `NS` records on subdomains. You can spot this when there is no `NS` option in the Type drop-down for a new record.
+
+A `CNAME seed → vps.dynv6.net` is **not a workaround**: it would make resolvers fetch dynv6's own A record (your WAN IP) and return it directly to the client. The client would then never actually contact your seeder, so no peer list would be served. Only a true `NS` delegation works.
+
+The clean solution is to **move DNS hosting to a free provider that does support subdomain NS records**, while keeping the domain registered where it is. Recommended: **deSEC.io** (free, EU-based, RFC-complete, DNSSEC included). Steps with `elektron-net.org` as example:
+
+1. **Create a deSEC account** at https://desec.io and add `elektron-net.org` as a new domain. Note the assigned nameservers — typically `ns1.desec.io` and `ns2.desec.org`.
+2. **Recreate your existing DNS records in deSEC** before switching anything. Copy every `A` / `AAAA` / `MX` / `TXT` / `CNAME` from your current registrar's DNS panel into deSEC (*Domain → +Record set*). This avoids breaking your website and mail when the cut-over happens.
+3. **Add the seeder delegation** in deSEC — Subname `seed`, Type `NS`, Records `vps.dynv6.net.` (with trailing dot), TTL 3600.
+4. **Switch the nameservers at your registrar** (at World4You: *myWorld → Domains → elektron-net.org → Nameserver verwalten*). Replace World4You's nameservers with `ns1.desec.io` and `ns2.desec.org`. Save. Propagation takes 1–24 h.
+5. **Verify** once propagation is through:
+
+   ```
+   dig NS elektron-net.org          # should list ns1.desec.io / ns2.desec.org
+   dig NS seed.elektron-net.org     # should list vps.dynv6.net
+   dig @seed.elektron-net.org seed.elektron-net.org   # peer list from your seeder
+   ```
+
+You keep paying your registrar (World4You etc.) for the domain registration. deSEC only takes over the *DNS hosting* — which is exactly what enables subdomain NS delegations.
+
+Other registrars/DNS providers known to support subdomain NS records out of the box if you'd rather move the domain fully: **Cloudflare**, **INWX**, **Namecheap**, **Porkbun**, **Hetzner DNS**.
+
 ### Step 5 — Configure the Elektron Seeder in StartOS
 
 Open the **Elektron Seeder → Config** action and fill in:
