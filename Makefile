@@ -1,4 +1,4 @@
-VERSION := 0.1.1
+VERSION := 0.1.2
 PKG_ID  := elektron-seeder
 S9PK    := $(PKG_ID).s9pk
 

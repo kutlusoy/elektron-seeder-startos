@@ -1,6 +1,6 @@
 {
   "name": "elektron-seeder-startos",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "StartOS service wrapper for the Elektron Net DNS seeder",
   "private": true,
   "scripts": {
